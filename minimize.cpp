@@ -21,6 +21,7 @@ int steps=100000;
 int frame=1000;
 int nT;
 double side;
+double side_r;      //inverse of side
 double m=1;
 double damp=1;					           //Is this too much damping for inertial FIRE to work efficiently?
 double deltaT=0.2;
@@ -77,6 +78,7 @@ sscanf(lines, "%d %s",&nT,&st);
         }
 sscanf(lines,"%lf %lf %c %c",&side,&v,&st,&st);
 side=-2.0*side;
+side_r=1./side;
 fclose(inp);
 
 int q,t;
@@ -152,16 +154,12 @@ ti=position[i].t;
                         if      (ti+tj==2) {d0=2.*rA; ks=0.255;}
                         else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
                         else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
+	dx=position[i].x-position[ verl[i][j] ].x;
+        dy=position[i].y-position[ verl[i][j] ].y;
 
-        dx=fmod(position[i].x,side)-fmod(position[ verl[i][j] ].x,side);
-        dy=fmod(position[i].y,side)-fmod(position[ verl[i][j] ].y,side);
-        
-        	if 	(dx < -side/2.) dx += side;
-                else if (dx > side/2.)  dx -= side;
-
-                if      (dy < -side/2.) dy += side;
-                else if (dy > side/2.) dy -= side;
-
+	//PBC
+	dx -= side*nearbyint(dx*side_r);
+	dy -= side*nearbyint(dy*side_r);
 
         r=(dx*dx+dy*dy);
 		if (r<d0){
@@ -181,8 +179,8 @@ out=fopen("out.dump","a");
 fprintf(out,"%d\n\n",nT);
         for (int i=1;i<=nT;i++){
 	//Printing PBC
-	x=position[i].x-floor(position[i].x/side)*side;
-	y=position[i].y-floor(position[i].y/side)*side;
+	x=position[i].x-floor(position[i].x/side)*side -side/2.;
+	y=position[i].y-floor(position[i].y/side)*side -side/2.;
 	fprintf(out,"%d %d %lf %lf 0.000000 %lf %lf\n",i,position[i].t,x,y,position[i].x,position[i].y);
         }
 fclose(out);
@@ -196,21 +194,19 @@ double r2;
 //To compare whether the monomers have left the Verlet radius, you need to know prior positions of monomers. Vx stores prior positions.
 	for (i=1;i<=nT;i++){
 	Nverl[i]=0;   //initialization
-	Vx[i]=fmod(position[i].x,side);
-	Vy[i]=fmod(position[i].y,side);
+	Vx[i]=position[i].x;
+	Vy[i]=position[i].y;
 	}
 
 
 	for (i=1;i<=nT;i++){
 		for (k=i+1;k<=nT;k++){
-		dx=fmod(position[i].x,side)-fmod(position[k].x,side);
-		dy=fmod(position[i].y,side)-fmod(position[k].y,side);
+		dx=position[i].x-position[k].x;
+		dy=position[i].y-position[k].y;
 
-			if 	(dx < -side/2.) dx += side;
-			else if (dx > side/2.)  dx -= side;
-
-			if      (dy < -side/2.) dy += side;
-			else if (dy > side/2.) dy -= side;
+		//PBC
+		dx -= side*nearbyint(dx*side_r);
+		dy -= side*nearbyint(dy*side_r);
 
 		r2=dx*dx+dy*dy;
 			if (r2<rv2){
@@ -227,13 +223,11 @@ void checkVerlet(int k){
 //Checks Verlet list and updates it if necessary.
 double dx,dy,r2;
 
-dx=fmod(position[k].x,side)-Vx[k];  //Vx,Vy is already in fmod form
-dy=fmod(position[k].y,side)-Vy[k];
-	if 	(dx < -side/2.) dx += side;
-	else if (dx > side/2.)  dx -= side;
-
-	if      (dy < -side/2.) dy += side;
-	else if (dy > side/2.) dy -= side;
+dx=position[k].x-Vx[k];  
+dy=position[k].y-Vy[k];
+//PBC
+dx -= side*nearbyint(dx*side_r);
+dy -= side*nearbyint(dy*side_r);
 r2=dx*dx+dy*dy;
 
 	if(r2>Vgap2) setVerlet();
