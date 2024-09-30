@@ -17,8 +17,8 @@ void print();
 void setVerlet(void);
 void checkVerlet(int k);
 
-int steps=10000000;
-int frame=100;
+int steps=100000;
+int frame=1000;
 int nT;
 double side;
 double m=1;
@@ -89,8 +89,8 @@ inp=fopen(config,"r");  //get nT and side
         fgets(lines,1000,inp);
 	sscanf(lines,"%d %d %lf %lf %lf %lf %lf %lf",&q,&t,&x,&y,&z,&v,&v,&v);
 	position[i].t=t;
-	position[i].x=x;
-	position[i].y=y;
+	position[i].x=x+side/2.;  //The box is now [0,side]
+	position[i].y=y+side/2.;
 	}
         for (int i=1; i<=3; i++){
         fgets(lines,1000,inp);
@@ -153,8 +153,8 @@ ti=position[i].t;
                         else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
                         else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
 
-        dx=position[i].x-position[ verl[i][j] ].x;
-        dy=position[i].y-position[ verl[i][j] ].y;
+        dx=fmod(position[i].x,side)-fmod(position[ verl[i][j] ].x,side);
+        dy=fmod(position[i].y,side)-fmod(position[ verl[i][j] ].y,side);
         
         	if 	(dx < -side/2.) dx += side;
                 else if (dx > side/2.)  dx -= side;
@@ -179,23 +179,10 @@ double x,y;
 FILE *out;
 out=fopen("out.dump","a");
 fprintf(out,"%d\n\n",nT);
-//printf("%lf\n",fmod(-7.,5.));
         for (int i=1;i<=nT;i++){
 	//Printing PBC
-	/*
-		if      (abs(position[i].x)<=side/2.) x=position[i].x;
-		else if (position[i].x>side/2.)       x=fmod(position[i].x,side/2.)-side/2.;
-		else if (position[i].x<-side/2.)      x=fmod(position[i].x,side/2.)+side/2.;
-		if      (abs(position[i].y)<=side/2.) y=position[i].y;
-		else if (position[i].y>side/2.)       y=fmod(position[i].y,side/2.)-side/2.;
-		else if (position[i].y<-side/2.)      y=fmod(position[i].y,side/2.)+side/2.;
-	*/
-		if      (abs(position[i].x)<=side/2.) x=position[i].x;
-		else if (position[i].x>side/2.)       x=position[i].x-ceil(position[i].x/side)*side;
-		else if (position[i].x<-side/2.)      x=position[i].x+ceil(-position[i].x/side)*side;
-		if      (abs(position[i].y)<=side/2.) y=position[i].y;
-		else if (position[i].y>side/2.)       y=position[i].y-ceil(position[i].y/side)*side;
-		else if (position[i].y<-side/2.)      y=position[i].y+ceil(-position[i].y/side)*side;
+	x=position[i].x-floor(position[i].x/side)*side;
+	y=position[i].y-floor(position[i].y/side)*side;
 	fprintf(out,"%d %d %lf %lf 0.000000 %lf %lf\n",i,position[i].t,x,y,position[i].x,position[i].y);
         }
 fclose(out);
@@ -209,15 +196,22 @@ double r2;
 //To compare whether the monomers have left the Verlet radius, you need to know prior positions of monomers. Vx stores prior positions.
 	for (i=1;i<=nT;i++){
 	Nverl[i]=0;   //initialization
-	Vx[i]=position[i].x;
-	Vy[i]=position[i].y;
+	Vx[i]=fmod(position[i].x,side);
+	Vy[i]=fmod(position[i].y,side);
 	}
 
 
 	for (i=1;i<=nT;i++){
 		for (k=i+1;k<=nT;k++){
-		dx=position[i].x-position[k].x;
-		dy=position[i].y-position[k].y;
+		dx=fmod(position[i].x,side)-fmod(position[k].x,side);
+		dy=fmod(position[i].y,side)-fmod(position[k].y,side);
+
+			if 	(dx < -side/2.) dx += side;
+			else if (dx > side/2.)  dx -= side;
+
+			if      (dy < -side/2.) dy += side;
+			else if (dy > side/2.) dy -= side;
+
 		r2=dx*dx+dy*dy;
 			if (r2<rv2){
 			Nverl[i]++;
@@ -233,8 +227,13 @@ void checkVerlet(int k){
 //Checks Verlet list and updates it if necessary.
 double dx,dy,r2;
 
-dx=position[k].x-Vx[k];
-dy=position[k].y-Vy[k];
+dx=fmod(position[k].x,side)-Vx[k];  //Vx,Vy is already in fmod form
+dy=fmod(position[k].y,side)-Vy[k];
+	if 	(dx < -side/2.) dx += side;
+	else if (dx > side/2.)  dx -= side;
+
+	if      (dy < -side/2.) dy += side;
+	else if (dy > side/2.) dy -= side;
 r2=dx*dx+dy*dy;
 
 	if(r2>Vgap2) setVerlet();
