@@ -13,12 +13,13 @@ int t;
 void initialize();
 void mdrun();
 void forceInt(int i);
+void energy();
 void print();
 void setVerlet(void);
 void checkVerlet(int k);
 
-int steps=100000;
-int frame=1000;
+int steps=100000000;
+int frame=10000;
 int nT;
 double side;
 double side_r;      //inverse of side
@@ -36,6 +37,10 @@ vec velocity[20000];
 vec forceInteraction[20000];
 double activeDirector[20000][2];
 double activeSpeed;
+double ke;
+double ke_COM;                      
+double pe;
+double pe_Eff;
 double Vx[20000];    // Positions of monomers in past
 double Vy[20000];    // Positions of monomers in past
 int Nverl[20000];    // The number of monomers in neighborhood of i^th monomer
@@ -53,7 +58,8 @@ print();
         for (int i=1; i<=steps; i++){
 	mdrun();
 		if (i%frame==0){
-		printf("%d\n",i);
+		energy();
+		printf("%d %.16f %.16f %.16f %.16f\n",i,pe,pe_Eff,ke,ke_COM);
 		print();		   //Print movie
 		}
 	}
@@ -170,6 +176,59 @@ ti=position[i].t;
 		forceInteraction[i].y += fyi;
 		}
     	}
+}
+
+void energy(){
+ke=0.;
+ke_COM=0.;                      //KE in the COM frame
+double vx_COM=0.,vy_COM=0.;
+double dx,dy,r;
+pe=0;
+pe_Eff=0;
+
+        for (int i=1;i<=nT;i++){
+	vx_COM += velocity[i].x;
+	vy_COM += velocity[i].y;
+	}
+vx_COM/= nT;
+vy_COM/= nT;
+
+        for (int i=1;i<=nT;i++){
+	ke += velocity[i].x*velocity[i].x+velocity[i].y*velocity[i].y;
+	ke_COM += (velocity[i].x-vx_COM)*(velocity[i].x-vx_COM)+(velocity[i].y-vy_COM)*(velocity[i].y-vy_COM);
+	}
+ke/=(2.*nT);
+ke_COM/=(2.*nT);
+
+int ti,tj;
+double d0,ks;
+        for (int i=1;i<=nT;i++){
+	ti=position[i].t;
+	pe_Eff -= activeDirector[i][0]*position[i].x+activeDirector[i][1]*position[i].y;
+	//Use PBC position or unwrapped position? 
+
+		for (int j=i+1;j<=nT;j++){
+		tj=position[j].t;
+                        if      (ti+tj==2) {d0=2.*rA; ks=0.255;}
+                        else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
+                        else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
+		dx=position[i].x-position[j].x;
+		dy=position[i].y-position[j].y;
+
+		//PBC
+		dx -= side*nearbyint(dx*side_r);
+		dy -= side*nearbyint(dy*side_r);
+
+		r=(dx*dx+dy*dy);
+			if (r<d0){
+			pe += ks*(r-d0)*(r-d0);                           //Check for 1/2
+			}
+		}
+	}
+pe_Eff *= activeSpeed;
+pe_Eff += pe;
+pe_Eff /=(2*nT);
+pe/=(2*nT);
 }
 
 void print(){
