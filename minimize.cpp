@@ -155,8 +155,9 @@ forceInteraction[i].y=0.0;
 
 ti=position[i].t;
 
-	for (int j=1;j<=Nverl[i];j++){
-	tj=position[j].t;
+	for (int j=1;j<=Nverl[i];j++){               //CHANGE!!@!!!
+	
+	tj=position[verl[i][j]].t;
                         if      (ti+tj==2) {d0=2.*rA; ks=0.255;}
                         else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
                         else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
@@ -168,14 +169,15 @@ ti=position[i].t;
 	dy -= side*nearbyint(dy*side_r);
 
         r=(dx*dx+dy*dy);
+	r=sqrt(r);
 		if (r<d0){
-		fxi= -2.*ks*(r-d0)*(dx)/r;
+		fxi= -2.*ks*(r-d0)*(dx)/r;             //Check for 1/2
                 fyi= -2.*ks*(r-d0)*(dy)/r;
 
 		forceInteraction[i].x += fxi;
 		forceInteraction[i].y += fyi;
 		}
-    	}
+	}
 }
 
 void energy(){
@@ -240,7 +242,7 @@ fprintf(out,"%d\n\n",nT);
 	//Printing PBC
 	x=position[i].x-floor(position[i].x/side)*side -side/2.;
 	y=position[i].y-floor(position[i].y/side)*side -side/2.;
-	fprintf(out,"%d %d %lf %lf 0.000000 %lf %lf\n",i,position[i].t,x,y,position[i].x,position[i].y);
+	fprintf(out,"%d %d %.16f %.16f 0.0\n",i,position[i].t,x,y);
         }
 fclose(out);
 }
