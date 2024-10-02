@@ -13,7 +13,12 @@ int t;
 
 void initialize();
 void mdrun();
+void FIRE();
 void forceInt(int i);
+void forceInt(int i);
+void totalForce(int i);
+void updatePosition(int i);
+void updateVelocity(int i);
 void energy();
 void print(int k);
 void setVerlet(void);
@@ -26,16 +31,17 @@ double side;
 double side_r;      //inverse of side
 double m=1;
 double damp=1;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.2;
+double deltaT=0.1;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
 double c2=m/(damp*damp)*(damp*deltaT/m-1+Gamma);
 double rA=1.3999999999999999/2.;
-double rB=0.5;
+double rB=0.6;						//CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 double rv,rv2,rc,rc2,Vgap,Vgap2;
 vec position[20000];
 vec velocity[20000];
 vec forceInteraction[20000];
+vec total_force[20000];
 double activeDirector[20000][2];
 double activeSpeed;
 double ke;
@@ -48,6 +54,16 @@ int Nverl[20000];    // The number of monomers in neighborhood of i^th monomer
 int verl[20000][20]; // Second index identities monomers in neighborhood of i^th monomer in first index. There can't be more than about 12 monomers in neighborhood. 20 is a sufficiently big enough list. The first Nverl[i] entries in second index hold the identities of monomers of i^th monomer in first index. All succeeding entries in second index will remain zeroes.
 char * config;
 
+//FIRE parameters
+double alpha;
+double alphaStart=0.1;
+double fInc=1.1;
+double deltaTmax=10*deltaT;
+double fAlpha=0.99;
+int Nmin=5;
+int powerPositiveSteps;
+double fDec=0.5;
+
 
 int main(int argc, char *argv[]){
 	if (argc!=5) {printf("./a.out | config.in | activeSpeed | steps/frame | #frames \n");exit(0);}
@@ -59,7 +75,8 @@ steps=(int)(frame*atoi(argv[4]));
 initialize(); 					           //store positions, active velocity directors
 print(0);
         for (int i=1; i<=steps; i++){
-	mdrun();
+	//mdrun();
+	FIRE();
 		if (i%frame==0){
 		energy();
 		printf("%d %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM);
@@ -115,10 +132,15 @@ inp=fopen(config,"r");
         }
 fclose(inp);
 
-//Initialize Velocities
+//Initialize Velocities and Forces
         for (int i=1; i<=nT; i++){
 	velocity[i].x=0.;
 	velocity[i].y=0.;
+
+	forceInteraction[i].x=0.;
+	forceInteraction[i].y=0.;
+	total_force[i].x=0.;
+	total_force[i].x=0.;
 	}
 
 //Initialize Verlet List
@@ -137,21 +159,100 @@ setVerlet();
 FILE *out;
 out=fopen("out.dump","w");
 fclose(out);
+
+//Initialize FIRE
+powerPositiveSteps=0;
+alpha=alphaStart;
 }
 
 void mdrun(){
 
 	for(int i=1; i<=nT; i++){
-	forceInt(i);
-	//Position Update
-	position[i].x=position[i].x+ c1*velocity[i].x+c2*(forceInteraction[i].x+activeSpeed*activeDirector[i][0]);
-	position[i].y=position[i].y+ c1*velocity[i].y+c2*(forceInteraction[i].y+activeSpeed*activeDirector[i][1]);
-	//Velocity Update
-	velocity[i].x=Gamma*velocity[i].x+1./damp*(1.-Gamma)*(forceInteraction[i].x+activeSpeed*activeDirector[i][0]);
-	velocity[i].y=Gamma*velocity[i].y+1./damp*(1.-Gamma)*(forceInteraction[i].y+activeSpeed*activeDirector[i][1]);
-
-	checkVerlet(i);
+	totalForce(i);					   //Calculate interaction+active force
+	updatePosition(i);
+	updateVelocity(i);
 	}
+}
+
+void updatePosition(int i){
+//Position Update
+position[i].x=position[i].x+ c1*velocity[i].x+c2*total_force[i].x;
+position[i].y=position[i].y+ c1*velocity[i].y+c2*total_force[i].y;
+
+checkVerlet(i);
+}
+
+void updateVelocity(int i){
+//Velocity Update
+velocity[i].x=Gamma*velocity[i].x+1./damp*(1.-Gamma)*total_force[i].x;
+velocity[i].y=Gamma*velocity[i].y+1./damp*(1.-Gamma)*total_force[i].y;
+}
+
+void FIRE(){
+	for(int i=1; i<=nT; i++){
+	updatePosition(i);
+	totalForce(i);
+	updateVelocity(i);
+	//Is the order of the above three important?
+	//Check for convergence?
+	}
+
+//Calculate power
+double power=0.;
+	for(int i=1; i<=nT; i++){
+	power += total_force[i].x*velocity[i].x;
+	power += total_force[i].y*velocity[i].y;
+	}
+
+	if (power>0.) powerPositiveSteps += 1;
+	else 	      powerPositiveSteps  = 0;
+
+
+//Calculate unit vector of total force
+double force_mag=0.;
+	for(int i=1; i<=nT; i++){
+	force_mag += total_force[i].x*total_force[i].x;
+	force_mag += total_force[i].y*total_force[i].y;
+	}
+force_mag=sqrt(force_mag);
+
+vec unit_total_force[20000];
+	for(int i=1; i<=nT; i++){
+	unit_total_force[i].x = total_force[i].x/force_mag;
+	unit_total_force[i].y = total_force[i].y/force_mag;
+	}
+
+//Calculate magnitude of velocity
+double modV=0.;
+	for(int i=1; i<=nT; i++){
+	modV += velocity[i].x*velocity[i].x;
+	modV += velocity[i].y*velocity[i].y;
+	}
+modV=sqrt(modV);
+
+//Rescale velocity
+	for(int i=1; i<=nT; i++){
+	velocity[i].x = (1-alpha)*velocity[i].x+alpha*unit_total_force[i].x*modV;
+	velocity[i].y = (1-alpha)*velocity[i].y+alpha*unit_total_force[i].y*modV;
+	}
+
+	if (power>0. && powerPositiveSteps>Nmin){
+	deltaT = min(deltaT*fInc,deltaTmax);
+	alpha *= fAlpha;
+	//printf("posPower\n");
+	}
+
+	if (power<=0.){
+	deltaT *= fDec;
+		for(int i=1; i<=nT; i++){
+		velocity[i].x=0.;
+		velocity[i].y=0.;
+		}
+	alpha=alphaStart;
+	//printf("negPower\n");
+	}
+
+
 }
 
 void forceInt(int i){
@@ -188,6 +289,12 @@ ti=position[i].t;
 		forceInteraction[i].y += fyi;
 		}
 	}
+}
+
+void totalForce(int i){
+forceInt(i);  					   //Calculate interaction force
+total_force[i].x=forceInteraction[i].x+activeSpeed*activeDirector[i][0];
+total_force[i].y=forceInteraction[i].y+activeSpeed*activeDirector[i][1];
 }
 
 void energy(){
