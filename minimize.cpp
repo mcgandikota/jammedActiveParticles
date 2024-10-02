@@ -4,6 +4,7 @@ using namespace std;
 #include <math.h>
 #include <cstdio>
 #include <iostream>
+#include <cstdlib>
 
 typedef struct{
 double x,y;
@@ -14,12 +15,12 @@ void initialize();
 void mdrun();
 void forceInt(int i);
 void energy();
-void print();
+void print(int k);
 void setVerlet(void);
 void checkVerlet(int k);
 
-int steps=100000000;
-int frame=10000;
+int steps;
+int frame;
 int nT;
 double side;
 double side_r;      //inverse of side
@@ -49,18 +50,20 @@ char * config;
 
 
 int main(int argc, char *argv[]){
-	if (argc!=3) {printf("./a.out config.in activeSpeed\n");exit(0);}
+	if (argc!=5) {printf("./a.out | config.in | activeSpeed | steps/frame | #frames \n");exit(0);}
 config=argv[1];
 activeSpeed=atof(argv[2]);
+frame=atoi(argv[3]);
+steps=(int)(frame*atoi(argv[4]));
 
 initialize(); 					           //store positions, active velocity directors
-print();
+print(0);
         for (int i=1; i<=steps; i++){
 	mdrun();
 		if (i%frame==0){
 		energy();
-		printf("%d %.16f %.16f %.16f %.16f\n",i,pe,pe_Eff,ke,ke_COM);
-		print();		   //Print movie
+		printf("%d %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM);
+		print(i);		   //Print movie
 		}
 	}
 
@@ -87,9 +90,10 @@ side=-2.0*side;
 side_r=1./side;
 fclose(inp);
 
+//Initialize Positions
 int q,t;
 double x,y,z;
-inp=fopen(config,"r");  //get nT and side
+inp=fopen(config,"r");  
         for (int i=1; i<=23; i++){
         fgets(lines,1000,inp);
         }
@@ -111,7 +115,13 @@ inp=fopen(config,"r");  //get nT and side
         }
 fclose(inp);
 
+//Initialize Velocities
+        for (int i=1; i<=nT; i++){
+	velocity[i].x=0.;
+	velocity[i].y=0.;
+	}
 
+//Initialize Verlet List
 //!!!!!!!!!!!!!!Can rv be smaller 1.2* ...?
 rv=1.8*2.*rA; 			       			   //Outer diameter in Verlet list
 	      						   //Choosing the bigger particle's radius
@@ -233,16 +243,25 @@ pe_Eff /=(2*nT);
 pe/=(2*nT);
 }
 
-void print(){
+void print(int k){
 double x,y;
 FILE *out;
 out=fopen("out.dump","a");
-fprintf(out,"%d\n\n",nT);
+fprintf(out,"ITEM: TIMESTEP\n");
+fprintf(out,"%d\n",k);
+fprintf(out,"ITEM: NUMBER OF ATOMS\n");
+fprintf(out,"%d\n",nT);
+fprintf(out,"ITEM: BOX BOUNDS pp pp pp\n");
+fprintf(out,"-%.16f %.16f \n",side/2.,side/2.);
+fprintf(out,"-%.16f %.16f \n",side/2.,side/2.);
+fprintf(out,"-%.16f %.16f \n",0.7,0.7);
+fprintf(out,"ITEM: ATOMS id type x y\n");
+
         for (int i=1;i<=nT;i++){
 	//Printing PBC
 	x=position[i].x-floor(position[i].x/side)*side -side/2.;
 	y=position[i].y-floor(position[i].y/side)*side -side/2.;
-	fprintf(out,"%d %d %.16f %.16f 0.0\n",i,position[i].t,x,y);
+	fprintf(out,"%d %d %.16f %.16f\n",i,position[i].t,x,y);
         }
 fclose(out);
 }
