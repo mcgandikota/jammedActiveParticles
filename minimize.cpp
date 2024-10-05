@@ -30,13 +30,14 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=1;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.1;					   //deltaT=0.2 works good for MD
+double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.2;					   //deltaT=0.2 works good for MD
+//double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
 double c2=m/(damp*damp)*(damp*deltaT/m-1+Gamma);
 double rA=1.3999999999999999/2.;
-double rB=0.6;						//CHANGE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+double rB=0.5;						
 double rv,rv2,rc,rc2,Vgap,Vgap2;
 vec position[20000];
 vec velocity[20000];
@@ -193,7 +194,6 @@ void FIRE(){
 	updatePosition(i);
 	totalForce(i);
 	updateVelocity(i);
-	//Is the order of the above three important?
 	//Check for convergence?
 	}
 
@@ -239,7 +239,6 @@ modV=sqrt(modV);
 	if (power>0. && powerPositiveSteps>Nmin){
 	deltaT = min(deltaT*fInc,deltaTmax);
 	alpha *= fAlpha;
-	//printf("posPower\n");
 	}
 
 	if (power<=0.){
@@ -249,29 +248,26 @@ modV=sqrt(modV);
 		velocity[i].y=0.;
 		}
 	alpha=alphaStart;
-	//printf("negPower\n");
 	}
-
-
 }
 
 void forceInt(int i){
 double fxi,fyi;
 double r,dx,dy;
 int ti,tj;
-double d0,ks;
+double d0,ks=1.0;
 
 forceInteraction[i].x=0.0;
 forceInteraction[i].y=0.0;
 
 ti=position[i].t;
 
-	for (int j=1;j<=Nverl[i];j++){               //CHANGE!!@!!!
+	for (int j=1;j<=Nverl[i];j++){     
 	
 	tj=position[verl[i][j]].t;
-                        if      (ti+tj==2) {d0=2.*rA; ks=0.255;}
-                        else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
-                        else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
+                        if      (ti+tj==2) d0=2.*rA;
+                        else if (ti+tj==3) d0=rA+rB;
+                        else if (ti+tj==4) d0=2.*rB;
 	dx=position[i].x-position[ verl[i][j] ].x;
         dy=position[i].y-position[ verl[i][j] ].y;
 
@@ -282,8 +278,8 @@ ti=position[i].t;
         r=(dx*dx+dy*dy);
 	r=sqrt(r);
 		if (r<d0){
-		fxi= -2.*ks*(r-d0)*(dx)/r;             //Check for 1/2
-                fyi= -2.*ks*(r-d0)*(dy)/r;
+		fxi= -ks*(r-d0)*(dx)/r;             //Check for 1/2
+                fyi= -ks*(r-d0)*(dy)/r;
 
 		forceInteraction[i].x += fxi;
 		forceInteraction[i].y += fyi;
