@@ -15,13 +15,13 @@ void initialize();
 void mdrun();
 void FIRE();
 void forceInt(int i);
-void forceInt(int i);
 void totalForce(int i);
+void averageTotalForce();
 void updatePosition(int i);
 void updateVelocity(int i);
 void energy();
 void print(int k);
-void setVerlet(void);
+void setVerlet();
 void checkVerlet(int k);
 
 int steps;
@@ -30,8 +30,9 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
+double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
 double deltaT=0.2;					   //deltaT=0.2 works good for MD
+double totF_cutoff=14e-11;
 //double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
@@ -43,6 +44,7 @@ vec position[20000];
 vec velocity[20000];
 vec forceInteraction[20000];
 vec total_force[20000];
+double totF;
 double activeDirector[20000][2];
 double activeSpeed;
 double ke;
@@ -75,12 +77,19 @@ steps=(int)(frame*atoi(argv[4]));
 
 initialize(); 					           //store positions, active velocity directors
 print(0);
-        for (int i=1; i<=steps; i++){
+
+int i=0;
+totF=1.2*totF_cutoff;					   //This is just for the while loop to work on the first run
+							   
+        //for (i=1; i<=steps; i++){
+        while (totF>totF_cutoff){
+	i++;
 	//mdrun();
 	FIRE();
 		if (i%frame==0){
 		energy();
-		printf("%d %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM);
+		averageTotalForce();
+		printf("%d %.30f %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM,totF);
 		print(i);		   //Print movie
 		}
 	}
@@ -90,7 +99,7 @@ print(0);
 return 0;
 }
 
-void initialize(){
+void initialize_LAMMPS_config(){
 FILE *inp;
 char lines[1000];
 char st;
@@ -130,6 +139,69 @@ inp=fopen(config,"r");
 	sscanf(lines, "%lf %lf %lf %lf %lf %lf %lf %lf",&z,&z,&z,&z,&x,&z,&z,&y);
      	activeDirector[i][0]=x*x-y*y;
 	activeDirector[i][1]=2*x*y;
+        }
+fclose(inp);
+
+//Initialize Velocities and Forces
+        for (int i=1; i<=nT; i++){
+	velocity[i].x=0.;
+	velocity[i].y=0.;
+
+	forceInteraction[i].x=0.;
+	forceInteraction[i].y=0.;
+	total_force[i].x=0.;
+	total_force[i].x=0.;
+	}
+
+//Initialize Verlet List
+//!!!!!!!!!!!!!!Can rv be smaller 1.2* ...?
+rv=1.8*2.*rA; 			       			   //Outer diameter in Verlet list
+	      						   //Choosing the bigger particle's radius
+rv2=pow(rv,2);
+rc= 2.*rA;						   //Inner diameter in Verlet list
+rc2=rc*rc;
+Vgap=0.5*(rv-rc);  					   //Radius of annulus in Verlet method
+Vgap2=pow(Vgap,2);
+
+setVerlet();
+
+
+FILE *out;
+out=fopen("out.dump","w");
+fclose(out);
+
+//Initialize FIRE
+powerPositiveSteps=0;
+alpha=alphaStart;
+}
+
+void initialize(){
+FILE *inp;
+char lines[1000];
+char st;
+double v;
+//get nT and side
+inp=fopen(config,"r");  
+fgets(lines,1000,inp);
+sscanf(lines, "%d %lf ",&nT,&side);
+fgets(lines,1000,inp);
+
+//Initialize Positions
+int q,t;
+double x,y,z;
+        for (int i=1; i<=nT; i++){
+        fgets(lines,1000,inp);
+	sscanf(lines,"%d %d %lf %lf",&q,&t,&x,&y);
+	position[i].t=t;
+	position[i].x=x+side/2.;  //The box is now [0,side]
+	position[i].y=y+side/2.;
+	}
+        fgets(lines,1000,inp);
+        for (int i=1; i<=nT; i++){
+        fgets(lines,1000,inp);
+	sscanf(lines, "%d %lf %lf",&q,&x,&y);
+     	activeDirector[i][0]=x;
+	activeDirector[i][1]=y;
         }
 fclose(inp);
 
@@ -293,6 +365,16 @@ total_force[i].x=forceInteraction[i].x+activeSpeed*activeDirector[i][0];
 total_force[i].y=forceInteraction[i].y+activeSpeed*activeDirector[i][1];
 }
 
+void averageTotalForce(){
+totF=0.;
+double f;
+        for (int i=1;i<=nT;i++){
+	f=total_force[i].x*total_force[i].x+total_force[i].y*total_force[i].y;
+	f=sqrt(f);
+	totF += f;
+	}
+totF /= nT;
+}
 void energy(){
 ke=0.;
 ke_COM=0.;                      //KE in the COM frame
@@ -369,7 +451,7 @@ fprintf(out,"ITEM: ATOMS id type x y\n");
 fclose(out);
 }
 
-void setVerlet(void){
+void setVerlet(){
 int i,k;
 double dx,dy;
 double r2;
