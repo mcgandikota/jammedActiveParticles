@@ -30,9 +30,9 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
+double damp=1.0;					           //Is this too much damping for inertial FIRE to work efficiently?
 double deltaT=0.2;					   //deltaT=0.2 works good for MD
-double totF_cutoff=14e-11;
+double totF_cutoff=14e-20;
 //double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
@@ -83,15 +83,15 @@ totF=1.2*totF_cutoff;					   //This is just for the while loop to work on the fi
 							   
         //for (i=1; i<=steps; i++){
         while (totF>totF_cutoff){
-	i++;
 	//mdrun();
 	FIRE();
 		if (i%frame==0){
 		energy();
 		averageTotalForce();
-		printf("%d %.30f %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM,totF);
+		printf("%d %.90f %.30f %.30f %.30f %.90f\n",i,pe,pe_Eff,ke,ke_COM,totF);
 		print(i);		   //Print movie
 		}
+	i++;
 	}
 
 
@@ -398,7 +398,7 @@ ke/=(2.*nT);
 ke_COM/=(2.*nT);
 
 int ti,tj;
-double d0,ks;
+double d0,ks=1.0;
         for (int i=1;i<=nT;i++){
 	ti=position[i].t;
 	pe_Eff -= activeDirector[i][0]*position[i].x+activeDirector[i][1]*position[i].y;
@@ -406,9 +406,9 @@ double d0,ks;
 
 		for (int j=i+1;j<=nT;j++){
 		tj=position[j].t;
-                        if      (ti+tj==2) {d0=2.*rA; ks=0.255;}
-                        else if (ti+tj==3) {d0=rA+rB; ks=0.347;}
-                        else if (ti+tj==4) {d0=2.*rB; ks=0.5;}
+                        if      (ti+tj==2) d0=2.*rA; 
+                        else if (ti+tj==3) d0=rA+rB; 
+                        else if (ti+tj==4) d0=2.*rB; 
 		dx=position[i].x-position[j].x;
 		dy=position[i].y-position[j].y;
 
