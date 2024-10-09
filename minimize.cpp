@@ -14,6 +14,8 @@ int t;
 void initialize();
 void mdrun();
 void FIRE();
+void updatePositionBrownian(int i); 
+void brownianRun();
 void forceInt(int i);
 void totalForce(int i);
 void averageTotalForce();
@@ -30,8 +32,8 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.002;					   //deltaT=0.2 works good for MD
+double damp=1.0;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.2;					   //deltaT=0.2 works good for MD
 double totF_cutoff=14e-20;
 //double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
@@ -81,17 +83,18 @@ print(0);
 int i=0;
 totF=1.2*totF_cutoff;					   //This is just for the while loop to work on the first run
 							   
-        //for (i=1; i<=steps; i++){
-        while (totF>totF_cutoff){
+        for (i=1; i<=steps; i++){
+        //while (totF>totF_cutoff){
 	mdrun();
 	//FIRE();
+	//brownianRun();
 		if (i%frame==0){
 		energy();
 		averageTotalForce();
 		printf("%d %.30f %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM,totF);
 		print(i);		   //Print movie
 		}
-	i++;     					  //for while loop only
+	//i++;     					  //for while loop only
 	}
 
 
@@ -127,8 +130,10 @@ inp=fopen(config,"r");
         fgets(lines,1000,inp);
 	sscanf(lines,"%d %d %lf %lf %lf %lf %lf %lf",&q,&t,&x,&y,&z,&v,&v,&v);
 	position[i].t=t;
-	position[i].x=x+side/2.;  //The box is now [0,side]
-	position[i].y=y+side/2.;
+	//position[i].x=x+side/2.;  //The box is now [0,side]
+	//position[i].y=y+side/2.;
+	position[i].x=x;  
+	position[i].y=y;
 	}
         for (int i=1; i<=3; i++){
         fgets(lines,1000,inp);
@@ -192,8 +197,10 @@ double x,y,z;
         fgets(lines,1000,inp);
 	sscanf(lines,"%d %d %lf %lf",&q,&t,&x,&y);
 	position[i].t=t;
-	position[i].x=x+side/2.;  //The box is now [0,side]
-	position[i].y=y+side/2.;
+	//position[i].x=x+side/2.;  //The box is now [0,side]
+	//position[i].y=y+side/2.;
+	position[i].x=x;  
+	position[i].y=y;
 	}
         fgets(lines,1000,inp);
         for (int i=1; i<=nT; i++){
@@ -235,6 +242,22 @@ fclose(out);
 //Initialize FIRE
 powerPositiveSteps=0;
 alpha=alphaStart;
+}
+
+void brownianRun(){
+
+        for(int i=1; i<=nT; i++){
+        totalForce(i);                                     //Calculate interaction+active force
+        updatePositionBrownian(i);
+        }
+}
+
+void updatePositionBrownian(int i){
+//Position Update
+position[i].x=position[i].x+ total_force[i].x*deltaT;
+position[i].y=position[i].y+ total_force[i].y*deltaT;
+
+checkVerlet(i);
 }
 
 void mdrun(){
