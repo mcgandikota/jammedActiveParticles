@@ -30,8 +30,8 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=1.0;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.2;					   //deltaT=0.2 works good for MD
+double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.002;					   //deltaT=0.2 works good for MD
 double totF_cutoff=14e-20;
 //double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 double Gamma=exp(-damp*deltaT/m);
@@ -83,19 +83,18 @@ totF=1.2*totF_cutoff;					   //This is just for the while loop to work on the fi
 							   
         //for (i=1; i<=steps; i++){
         while (totF>totF_cutoff){
-	//mdrun();
-	FIRE();
+	mdrun();
+	//FIRE();
 		if (i%frame==0){
 		energy();
 		averageTotalForce();
-		printf("%d %.90f %.30f %.30f %.30f %.90f\n",i,pe,pe_Eff,ke,ke_COM,totF);
+		printf("%d %.30f %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM,totF);
 		print(i);		   //Print movie
 		}
-	i++;
+	i++;     					  //for while loop only
 	}
 
 
-//while(ftol<FTOL)  {mdrun();}  //ftol is the change in contact forces between consecutive (10000) mdruns.
 return 0;
 }
 
@@ -344,8 +343,13 @@ ti=position[i].t;
         dy=position[i].y-position[ verl[i][j] ].y;
 
 	//PBC
-	dx -= side*nearbyint(dx*side_r);
-	dy -= side*nearbyint(dy*side_r);
+	//dx -= side*nearbyint(dx*side_r);
+	//dy -= side*nearbyint(dy*side_r);
+		if (dx>side/2) dx-=side;
+		if (dx<-side/2) dx+=side;
+		if (dy>side/2) dy-=side;
+		if (dy<-side/2) dy+=side;
+
 
         r=(dx*dx+dy*dy);
 	r=sqrt(r);
@@ -413,15 +417,21 @@ double d0,ks=1.0;
 		dy=position[i].y-position[j].y;
 
 		//PBC
-		dx -= side*nearbyint(dx*side_r);
-		dy -= side*nearbyint(dy*side_r);
+		//dx -= side*nearbyint(dx*side_r);
+		//dy -= side*nearbyint(dy*side_r);
+			if (dx>side/2) dx-=side;
+		        if (dx<-side/2) dx+=side;
+			if (dy>side/2) dy-=side;
+			if (dy<-side/2) dy+=side;
+
 
 		r=(dx*dx+dy*dy);
 			if (r<d0){
-			pe += ks*(r-d0)*(r-d0);                           //Check for 1/2
+			pe += ks*(r-d0)*(r-d0);                           
 			}
 		}
 	}
+pe *= 0.5;
 pe_Eff *= activeSpeed;
 pe_Eff += pe;
 pe_Eff /=(2*nT);
@@ -470,8 +480,13 @@ double r2;
 		dy=position[i].y-position[k].y;
 
 		//PBC
-		dx -= side*nearbyint(dx*side_r);
-		dy -= side*nearbyint(dy*side_r);
+		//dx -= side*nearbyint(dx*side_r);
+		//dy -= side*nearbyint(dy*side_r);
+			if (dx>side/2) dx-=side;
+		        if (dx<-side/2) dx+=side;
+			if (dy>side/2) dy-=side;
+			if (dy<-side/2) dy+=side;
+
 
 		r2=dx*dx+dy*dy;
 			if (r2<rv2){
@@ -491,8 +506,13 @@ double dx,dy,r2;
 dx=position[k].x-Vx[k];  
 dy=position[k].y-Vy[k];
 //PBC
-dx -= side*nearbyint(dx*side_r);
-dy -= side*nearbyint(dy*side_r);
+//dx -= side*nearbyint(dx*side_r);
+//dy -= side*nearbyint(dy*side_r);
+	if (dx>side/2) dx-=side;
+        if (dx<-side/2) dx+=side;
+	if (dy>side/2) dy-=side;
+	if (dy<-side/2) dy+=side;
+
 r2=dx*dx+dy*dy;
 
 	if(r2>Vgap2) setVerlet();
