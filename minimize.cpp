@@ -3,7 +3,11 @@
 #include "./header.h"
 
 int main(int argc, char *argv[]){
-	if (argc!=5) {printf("./a.out | config.in | activeSpeed | steps/frame | #frames \n");exit(0);}
+	if (argc!=5){
+	printf("./a.out | config.in | activeSpeed | steps/frame | #frames \n");
+	exit(0);
+	}
+
 config=argv[1];
 activeSpeed=atof(argv[2]);
 frame=atoi(argv[3]);
@@ -17,21 +21,20 @@ print(0);
 int i=0;
 //totF=1.2*totF_cutoff;					   //This is just for the while loop to work on the first run
         for (i=1; i<=nT; i++){
-	totalForce(i);
+	forceInt(i);
 	}
 							   
         for (i=0; i<=steps; i++){
         //while (totF>totF_cutoff){
-	//mdrun();
-	//FIRE();
 		if (i%frame==0){
 		energy();
 		averageTotalForce();
-		pressure();				  //Optional calculation
 		printf("%d %.30f %.30f %.30f %.30f %.30f %.30f\n",i,pe,pe_Eff,ke,ke_COM,totF,virial_pressure);
 		print(i);		   //Print movie
 		}
 	brownianRun();
+	//mdrun();
+	//FIRE();
 	//i++;     					  //for while loop only
 	}
 
