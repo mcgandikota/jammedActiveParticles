@@ -21,7 +21,7 @@ long double side;
 long double side_r;      //inverse of side
 long double m=1;
 long double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
-long double deltaT=0.2;					   //deltaT=0.2 works good for MD
+long double deltaT=0.02;					   //deltaT=0.2 works good for MD
 long double totF_cutoff=14e-20;
 //long double deltaT=0.0001;					   //deltaT=0.2 works good for MD
 long double Gamma=exp(-damp*deltaT/m);
@@ -519,7 +519,7 @@ fprintf(out,"%d\n",nT);
 fprintf(out,"ITEM: BOX BOUNDS pp pp pp\n");
 fprintf(out,"-%.16Lf %.16Lf \n",side/2.,side/2.);
 fprintf(out,"-%.16Lf %.16Lf \n",side/2.,side/2.);
-fprintf(out,"-%.16Lf %.16Lf \n",0.7,0.7);
+fprintf(out,"-%.f %.f \n",1.0,1.0);
 fprintf(out,"ITEM: ATOMS id type x y\n");
 
         for (int i=1;i<=nT;i++){
