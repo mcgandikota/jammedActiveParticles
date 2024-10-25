@@ -5,6 +5,7 @@ using namespace std;
 #include <cstdio>
 #include <iostream>
 #include <cstdlib>
+#include "time.h"
 
 typedef struct{
 double x,y;
@@ -18,10 +19,9 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=1.0;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.2;					   //deltaT=0.2 works good for MD
-double totF_cutoff=14e-20;
-//double deltaT=0.0001;					   //deltaT=0.2 works good for MD
+double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.02;					   //deltaT=0.2 works good for MD
+double totF_cutoff=1e-12;
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
 double c2=m/(damp*damp)*(damp*deltaT/m-1+Gamma);
@@ -58,6 +58,7 @@ double fDec=0.5;
 
 //Function declarations
 void initialize();
+void initialize_random(double density);
 void initialize_LAMMPS_config();
 void mdrun();
 void FIRE();
@@ -106,6 +107,66 @@ double x,y,z;
 	activeDirector[i][1]=y;
         }
 fclose(inp);
+
+//Initialize Velocities and Forces
+        for (int i=1; i<=nT; i++){
+	velocity[i].x=0.;
+	velocity[i].y=0.;
+
+	forceInteraction[i].x=0.;
+	forceInteraction[i].y=0.;
+	total_force[i].x=0.;
+	total_force[i].x=0.;
+	}
+
+//Initialize Verlet List
+//!!!!!!!!!!!!!!Can rv be smaller 1.2* ...?
+rv=1.8*2.*rA; 			       			   //Outer diameter in Verlet list
+	      						   //Choosing the bigger particle's radius
+rv2=pow(rv,2);
+rc= 2.*rA;						   //Inner diameter in Verlet list
+rc2=rc*rc;
+Vgap=0.5*(rv-rc);  					   //Radius of annulus in Verlet method
+Vgap2=pow(Vgap,2);
+
+setVerlet();
+
+
+FILE *out;
+out=fopen("out.dump","w");
+fclose(out);
+
+//Initialize FIRE
+powerPositiveSteps=0;
+alpha=alphaStart;
+}
+
+void initialize_random(double density){
+side = sqrt(nT*M_PI*(rA*rA+rB*rB)/(2*density));
+double dx,dy,dr;
+
+//Initialize Positions
+srand48(time(NULL)); 					   //takes current time as seed for random number generator
+
+	for (int i=1;i<=nT;i++){
+		if (i<=(int)(nT/2)) position[i].t=1;
+		else     	    position[i].t=2;
+	here:
+	position[i].x=(0.5-drand48())*0.99*side; 			   //0.99 so that it wont end up on the edge of PBC
+	position[i].y=(0.5-drand48())*0.99*side;
+
+		for (int j=1;j<i;j++){
+		dx=position[i].x-position[j].x;
+		dy=position[i].y-position[j].y; 
+		dr=sqrt(dx*dx+dy*dy);
+			if (dr<0.8) goto here;
+		} 
+	activeDirector[i][0]=0.;			  //We will not use these directors for these simulations
+	activeDirector[i][1]=0.;
+
+	//printf("%d ",i);
+	}
+printf("\n");
 
 //Initialize Velocities and Forces
         for (int i=1; i<=nT; i++){
@@ -321,6 +382,8 @@ modV=sqrt(modV);
 }
 
 void forceInt(int i){
+//Calculates interaction forces and pressure
+//Note that pressure is calculated considring the system as quasi 2D, so d=3
 double fxi,fyi;
 double r,dx,dy;
 int ti,tj;
@@ -354,8 +417,10 @@ ti=position[i].t;
         r=(dx*dx+dy*dy);
 	r=sqrt(r);
 		if (r<d0){
-		fxi= -ks*(r-d0)*(dx)/r;             //Check for 1/2
-                fyi= -ks*(r-d0)*(dy)/r;
+		//fxi= -ks*(r-d0)*(dx)/r;             //Check for 1/2
+                //fyi= -ks*(r-d0)*(dy)/r;
+		fxi= ks/d0*(1.-r/d0)*dx/r;             
+                fyi= ks/d0*(1.-r/d0)*dy/r;
 
 		forceInteraction[i].x += fxi;
 		forceInteraction[i].y += fyi;
@@ -432,11 +497,12 @@ double d0,ks=1.0;
 
 		r=(dx*dx+dy*dy);
 			if (r<d0){
-			pe += ks*(r-d0)*(r-d0);                           
+			//pe += (r-d0)*(r-d0);                           
+			pe += (1.-r/d0)*(1.-r/d0);                           
 			}
 		}
 	}
-pe *= 0.5;
+pe *= 0.5*ks;
 pe_Eff *= activeSpeed;
 pe_Eff += pe;
 pe_Eff /=(2*nT);

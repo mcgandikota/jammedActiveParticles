@@ -60,7 +60,7 @@ long double fDec=0.5;
 
 //Function declarations
 void initialize();
-void initialize_random();
+void initialize_random(long double density);
 void initialize_LAMMPS_config();
 void mdrun();
 void FIRE();
@@ -143,7 +143,7 @@ powerPositiveSteps=0;
 alpha=alphaStart;
 }
 
-void initialize_random(){
+void initialize_random(long double density){
 side = sqrtl(nT*M_PI*(rA*rA+rB*rB)/(2*density[0]));
 double dx,dy,dr;
 
