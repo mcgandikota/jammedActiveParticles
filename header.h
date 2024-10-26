@@ -1,5 +1,6 @@
-//Energy minimization of a jammed active particle distribution in 2D
-//
+// Functions for jammed active particle distribution in 2D
+// Note that PBC may not work properly for fluid systems.
+
 using namespace std;
 #include <math.h>
 #include <cstdio>
@@ -71,6 +72,8 @@ void energy();
 void print(int k);
 void setVerlet();
 void checkVerlet(int k);
+void remove_rattlers();
+double calculate_deltaZ();
 
 #include "./initialize.h" //initializations such as reading Hyderabad configs, LAMMPS dump config and generating random packed configurations
 
@@ -382,4 +385,116 @@ dy=position[k].y-Vy[k];
 r2=dx*dx+dy*dy;
 
 	if(r2>Vgap2) setVerlet();
+}
+
+void remove_rattlers(){
+int no_neighbors[nT+1];
+long double dx,dy,d0,separation;
+int ti,tj,n;
+//initialization
+        for (int i=1; i<=nT; i++){
+        no_neighbors[i]=0;
+        }
+
+//Find number of neighbors
+        for (int i=1; i<=nT; i++){
+        ti=position[i].t;
+                for (int j=i+1; j<=nT; j++){
+                tj=position[j].t;
+                        if (ti+tj==2) d0=2.*rA;
+                        else if (ti+tj==3) d0=rA+rB;
+                        else if (ti+tj==4) d0=2.*rB;
+
+                dx=fabs(position[i].x-position[j].x);
+                dy=fabs(position[i].y-position[j].y);
+
+                if (dx>side/2.) dx -= side;
+                if (dy>side/2.) dy -= side;
+                separation = dx*dx + dy*dy;
+                separation = sqrt(separation);
+    
+                        if (separation<1.00*d0) {
+                        no_neighbors[i]++; 
+                        no_neighbors[j]++;
+                        }
+                }
+        }
+
+double diameter;
+vec position_noRattlers[nT];
+n=0;
+        for (int i=1; i<=nT; i++){
+                if (no_neighbors[i]>2){
+                n++;
+		position_noRattlers[n].t = position[i].t;
+		position_noRattlers[n].x = position[i].x;
+		position_noRattlers[n].y = position[i].y;
+                }
+        }
+
+//Remove rattlers from position list and create postions list using only no rattlers
+        for (int i=1; i<=nT; i++){
+	position[i].t=0;
+	position[i].x=0.;
+	position[i].y=0.;
+	}
+
+nT=n;
+
+        for (int i=1; i<=nT; i++){
+	position[i].t=position_noRattlers[i].t;
+	position[i].x=position_noRattlers[i].x;
+	position[i].y=position_noRattlers[i].y;
+	}
+
+}
+
+double calculate_deltaZ(){
+int no_neighbors[nT+1];
+
+		//Calculate neighbors
+		
+		//initialization
+		for (int i=1; i<=nT; i++){
+		no_neighbors[i]=0;
+		}
+
+int ti,tj;
+double dx,dy,d0,separation;
+		//Find number of neighbors
+		for (int i=1; i<=nT; i++){
+		ti=position[i].t;
+			for (int j=i+1; j<=nT; j++){
+			tj=position[j].t;
+				if (ti+tj==2) d0=2.*rA;
+				else if (ti+tj==3) d0=rA+rB;
+				else if (ti+tj==4) d0=2.*rB;
+
+			dx=fabs(position[i].x-position[j].x);
+			dy=fabs(position[i].y-position[j].y);
+
+			if (dx>side/2.) dx -= side;
+			if (dy>side/2.) dy -= side;
+			separation = dx*dx + dy*dy;
+			separation = sqrt(separation);
+		
+				if (separation<1.00*d0) {
+				no_neighbors[i]++; 
+				no_neighbors[j]++;
+				}
+			}
+		}
+
+	
+float z_average_no_rattlers=0;
+int n=0;
+		for (int i=1; i<=nT; i++){
+			if (no_neighbors[i]>2){
+			n++;
+			z_average_no_rattlers += no_neighbors[i];
+			}
+		}
+	z_average_no_rattlers /= n;
+
+return z_average_no_rattlers - 4.; 
 }
