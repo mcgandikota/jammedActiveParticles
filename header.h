@@ -75,6 +75,7 @@ void checkVerlet(int k);
 void remove_rattlers();
 double calculate_deltaZ();
 
+
 #include "./initialize.h" //initializations such as reading Hyderabad configs, LAMMPS dump config and generating random packed configurations
 
 //Functions
@@ -227,7 +228,7 @@ ti=position[i].t;
 		}
 	}
 
-	if (i==nT) virial_pressure /= 3.*2*side*side;  //Accounting for overcounting too
+	if (i==nT) virial_pressure /= 2.*2*side*side;  //Accounting for overcounting too
 }
 
 void totalForce(int i){
@@ -498,3 +499,5 @@ int n=0;
 
 return z_average_no_rattlers - 4.; 
 }
+
+
