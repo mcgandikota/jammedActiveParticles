@@ -20,9 +20,9 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.02;					   //deltaT=0.2 works good for MD
-double totF_cutoff=1e-12;
+double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.2;					   //deltaT=0.2 works good for MD
+double totF_cutoff=1e-11;
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
 double c2=m/(damp*damp)*(damp*deltaT/m-1+Gamma);
@@ -74,6 +74,7 @@ void setVerlet();
 void checkVerlet(int k);
 void remove_rattlers();
 double calculate_deltaZ();
+void write_config();
 
 
 #include "./initialize.h" //initializations such as reading Hyderabad configs, LAMMPS dump config and generating random packed configurations
@@ -462,6 +463,7 @@ int no_neighbors[nT+1];
 
 int ti,tj;
 double dx,dy,d0,separation;
+/*
 		//Find number of neighbors
 		for (int i=1; i<=nT; i++){
 		ti=position[i].t;
@@ -480,11 +482,38 @@ double dx,dy,d0,separation;
 			separation = sqrt(separation);
 		
 				if (separation<1.00*d0) {
+				//if (d0-separation>1e-11) {
 				no_neighbors[i]++; 
 				no_neighbors[j]++;
 				}
 			}
 		}
+			*/
+
+		for (int i=1; i<=nT; i++){
+		ti=position[i].t;
+	
+			for (int j=1;j<=Nverl[i];j++){     
+			tj=position[verl[i][j]].t;
+				if (ti+tj==2) d0=2.*rA;
+				else if (ti+tj==3) d0=rA+rB;
+				else if (ti+tj==4) d0=2.*rB;
+
+			dx=fabs(position[i].x-position[verl[i][j]].x);
+			dy=fabs(position[i].y-position[verl[i][j]].y);
+
+			if (dx>side/2.) dx -= side;
+			if (dy>side/2.) dy -= side;
+			separation = dx*dx + dy*dy;
+			separation = sqrt(separation);
+		
+				if (separation<1.00*d0) {
+				//if (d0-separation>1e-11) {
+				no_neighbors[i]++; 
+				}
+			}
+		}
+
 
 	
 float z_average_no_rattlers=0;
@@ -500,4 +529,21 @@ int n=0;
 return z_average_no_rattlers - 4.; 
 }
 
+void write_config(){
+FILE *out;
+out=fopen("config.in","w");
+fclose(out);
 
+int k=1;
+out=fopen("config.in","a");
+fprintf(out,"%d %.16f\n",nT,side);
+	for (int i=1;i<=nT;i++){
+ 	fprintf(out,"%d %d %.16f %.16f\n",i,position[i].t,position[i].x,position[i].y);
+	} 
+fprintf(out,"\n");
+
+	for (int i=1;i<=nT;i++){
+	fprintf(out,"%d %lf %lf\n",i,activeDirector[i][0],activeDirector[i][1]);
+	}
+fclose(out);
+}

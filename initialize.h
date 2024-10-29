@@ -24,7 +24,7 @@ thetaxAv /= nT;
 thetayAv /= nT;
 
 double error=sqrt(thetaxAv*thetaxAv+thetayAv*thetayAv);
-double cut_off=1e-18;
+double cut_off=1e-16;
 double magnitude;
 
 	while (error > cut_off){
@@ -61,24 +61,28 @@ double v;
 //get nT and side
 inp=fopen(config,"r");  
 fgets(lines,1000,inp);
-sscanf(lines, "%d %lf ",&nT,&side);
+sscanf(lines, "%lf ",&side);
 
 //Initialize Positions
 int q,t;
 double x,y,z;
-        for (int i=1; i<=nT; i++){
-        fgets(lines,1000,inp);
+int n=0;
+	while(fgets(lines,1000,inp)!=NULL){
+	n++; 
 	sscanf(lines,"%lf %lf %lf",&v,&x,&y);
-		if      (v>1.2) position[i].t=1;
-		else if (v<1.2) position[i].t=2;
+		if      (v>1.2) position[n].t=1;
+		else if (v<1.2) position[n].t=2;
 
 	//position[i].x=x+side/2.;  //The box is now [0,side]
 	//position[i].y=y+side/2.;
-	position[i].x=x;  
-	position[i].y=y;
+	position[n].x=x;  
+	position[n].y=y;
 	}
 fclose(inp);
+nT=n;
 
+
+remove_rattlers();			//In case the relaxation of passive configurations generated rattlers
 generate_theta();
 
 //Initialize Velocities and Forces
