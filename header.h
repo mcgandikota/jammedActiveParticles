@@ -44,6 +44,7 @@ double Vx[20000];    // Positions of monomers in past
 double Vy[20000];    // Positions of monomers in past
 int Nverl[20000];    // The number of monomers in neighborhood of i^th monomer
 int verl[20000][20]; // Second index identities monomers in neighborhood of i^th monomer in first index. There can't be more than about 12 monomers in neighborhood. 20 is a sufficiently big enough list. The first Nverl[i] entries in second index hold the identities of monomers of i^th monomer in first index. All succeeding entries in second index will remain zeroes.
+int no_neighbors[20000];
 double virial_pressure=0.0;
 char * config;
 
@@ -73,6 +74,7 @@ void print(int k);
 void setVerlet();
 void checkVerlet(int k);
 void remove_rattlers();
+void count_neighbors();
 double calculate_deltaZ();
 void write_config();
 
@@ -389,8 +391,7 @@ r2=dx*dx+dy*dy;
 	if(r2>Vgap2) setVerlet();
 }
 
-void remove_rattlers(){
-int no_neighbors[nT+1];
+void count_neighbors(){
 long double dx,dy,d0,separation;
 int ti,tj,n;
 //initialization
@@ -422,9 +423,14 @@ int ti,tj,n;
                 }
         }
 
-double diameter;
-vec position_noRattlers[nT];
-n=0;
+}
+
+void remove_rattlers(){
+
+count_neighbors();
+
+vec position_noRattlers[nT+1];
+int n=0;
         for (int i=1; i<=nT; i++){
                 if (no_neighbors[i]>2){
                 n++;
@@ -452,9 +458,7 @@ nT=n;
 }
 
 double calculate_deltaZ(){
-int no_neighbors[nT+1];
-
-		//Calculate neighbors
+//Calculate neighbors
 		
 		//initialization
 		for (int i=1; i<=nT; i++){
@@ -463,32 +467,6 @@ int no_neighbors[nT+1];
 
 int ti,tj;
 double dx,dy,d0,separation;
-/*
-		//Find number of neighbors
-		for (int i=1; i<=nT; i++){
-		ti=position[i].t;
-			for (int j=i+1; j<=nT; j++){
-			tj=position[j].t;
-				if (ti+tj==2) d0=2.*rA;
-				else if (ti+tj==3) d0=rA+rB;
-				else if (ti+tj==4) d0=2.*rB;
-
-			dx=fabs(position[i].x-position[j].x);
-			dy=fabs(position[i].y-position[j].y);
-
-			if (dx>side/2.) dx -= side;
-			if (dy>side/2.) dy -= side;
-			separation = dx*dx + dy*dy;
-			separation = sqrt(separation);
-		
-				if (separation<1.00*d0) {
-				//if (d0-separation>1e-11) {
-				no_neighbors[i]++; 
-				no_neighbors[j]++;
-				}
-			}
-		}
-			*/
 
 		for (int i=1; i<=nT; i++){
 		ti=position[i].t;

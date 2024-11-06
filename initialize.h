@@ -127,7 +127,6 @@ double v;
 inp=fopen(config,"r");  
 fgets(lines,1000,inp);
 sscanf(lines, "%d %lf ",&nT,&side);
-fgets(lines,1000,inp);
 
 //Initialize Positions
 int q,t;
