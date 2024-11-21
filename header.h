@@ -417,6 +417,7 @@ int ti,tj,n;
                 separation = sqrt(separation);
     
                         if (separation<1.00*d0) {
+			//if (d0-separation>1e-11) {
                         no_neighbors[i]++; 
                         no_neighbors[j]++;
                         }
@@ -427,34 +428,38 @@ int ti,tj,n;
 
 void remove_rattlers(){
 
-count_neighbors();
-
-vec position_noRattlers[nT+1];
 int n=0;
-        for (int i=1; i<=nT; i++){
-                if (no_neighbors[i]>2){
-                n++;
-		position_noRattlers[n].t = position[i].t;
-		position_noRattlers[n].x = position[i].x;
-		position_noRattlers[n].y = position[i].y;
-                }
-        }
+vec position_noRattlers[nT+1];
+int k=0;
+	while (n!=nT){
+		if (k>0) {nT=n; printf("hello %d\n",nT);}
+	count_neighbors();
+	k++;
+	n=0;
+		for (int i=1; i<=nT; i++){
+			if (no_neighbors[i]>2){
+			n++;
+			position_noRattlers[n].t = position[i].t;
+			position_noRattlers[n].x = position[i].x;
+			position_noRattlers[n].y = position[i].y;
+			}
+		}
 
-//Remove rattlers from position list and create postions list using only no rattlers
-        for (int i=1; i<=nT; i++){
-	position[i].t=0;
-	position[i].x=0.;
-	position[i].y=0.;
+	//Remove rattlers from position list and create postions list using only no rattlers
+		for (int i=1; i<=nT; i++){
+		position[i].t=0;
+		position[i].x=0.;
+		position[i].y=0.;
+		}
+
+
+		for (int i=1; i<=n; i++){
+		position[i].t=position_noRattlers[i].t;
+		position[i].x=position_noRattlers[i].x;
+		position[i].y=position_noRattlers[i].y;
+		}
+
 	}
-
-nT=n;
-
-        for (int i=1; i<=nT; i++){
-	position[i].t=position_noRattlers[i].t;
-	position[i].x=position_noRattlers[i].x;
-	position[i].y=position_noRattlers[i].y;
-	}
-
 }
 
 double calculate_deltaZ(){
