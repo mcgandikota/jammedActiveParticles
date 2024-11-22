@@ -430,9 +430,11 @@ void remove_rattlers(){
 
 int n=0;
 vec position_noRattlers[nT+1];
+double activeDirector_noRattlers[20000][2];
 int k=0;
 	while (n!=nT){
-		if (k>0) {nT=n; printf("hello %d\n",nT);}
+		//if (k>0) {nT=n; printf("%d\n",nT);}
+		if (k>0) nT=n; 
 	count_neighbors();
 	k++;
 	n=0;
@@ -442,6 +444,9 @@ int k=0;
 			position_noRattlers[n].t = position[i].t;
 			position_noRattlers[n].x = position[i].x;
 			position_noRattlers[n].y = position[i].y;
+
+			activeDirector_noRattlers[n][0] = activeDirector[i][0];
+			activeDirector_noRattlers[n][1] = activeDirector[i][1];
 			}
 		}
 
@@ -450,6 +455,9 @@ int k=0;
 		position[i].t=0;
 		position[i].x=0.;
 		position[i].y=0.;
+
+		activeDirector[i][0]=0.;
+		activeDirector[i][1]=0.;
 		}
 
 
@@ -457,6 +465,9 @@ int k=0;
 		position[i].t=position_noRattlers[i].t;
 		position[i].x=position_noRattlers[i].x;
 		position[i].y=position_noRattlers[i].y;
+		
+		activeDirector[i][0]=activeDirector_noRattlers[i][0];
+		activeDirector[i][1]=activeDirector_noRattlers[i][1];
 		}
 
 	}
