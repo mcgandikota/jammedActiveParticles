@@ -327,8 +327,15 @@ fprintf(out,"ITEM: ATOMS id type x y\n");
 
         for (int i=1;i<=nT;i++){
 	//Printing PBC
-	x=position[i].x-floor(position[i].x/side)*side -side/2.;
-	y=position[i].y-floor(position[i].y/side)*side -side/2.;
+	//x=position[i].x-floor(position[i].x/side)*side -side/2.;
+	//y=position[i].y-floor(position[i].y/side)*side -side/2.;
+	x=position[i].x;
+	y=position[i].y;
+		if (x>side/2.) x-= side;
+		if (x<-side/2.) x+= side;
+		if (y>side/2.) y-= side;
+		if (y<-side/2.) y+= side;
+
 	fprintf(out,"%d %d %.16f %.16f\n",i,position[i].t,x,y);
         }
 fclose(out);
