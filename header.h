@@ -331,11 +331,10 @@ fprintf(out,"ITEM: ATOMS id type x y\n");
 	//y=position[i].y-floor(position[i].y/side)*side -side/2.;
 	x=position[i].x;
 	y=position[i].y;
-		if (x>side/2.) x-= side;
-		if (x<-side/2.) x+= side;
-		if (y>side/2.) y-= side;
-		if (y<-side/2.) y+= side;
-
+	if (x>side/2.) x-= side;
+	if (x<-side/2.) x+= side;
+	if (y>side/2.) y-= side;
+	if (y<-side/2.) y+= side;
 	fprintf(out,"%d %d %.16f %.16f\n",i,position[i].t,x,y);
         }
 fclose(out);
@@ -437,8 +436,12 @@ void remove_rattlers(){
 
 int n=0;
 vec position_noRattlers[nT+1];
+vec total_force_noRattlers[nT+1];
+vec forceInteraction_noRattlers[nT+1];
+vec velocity_noRattlers[nT+1];
 double activeDirector_noRattlers[20000][2];
 int k=0;
+
 	while (n!=nT){
 		//if (k>0) {nT=n; printf("%d\n",nT);}
 		if (k>0) nT=n; 
@@ -454,6 +457,15 @@ int k=0;
 
 			activeDirector_noRattlers[n][0] = activeDirector[i][0];
 			activeDirector_noRattlers[n][1] = activeDirector[i][1];
+
+			velocity_noRattlers[i].x = velocity[i].x;
+			velocity_noRattlers[i].y = velocity[i].y;
+
+			total_force_noRattlers[i].x = total_force[i].x;
+			total_force_noRattlers[i].y = total_force[i].y;
+
+			forceInteraction_noRattlers[i].x = forceInteraction[i].x;
+			forceInteraction_noRattlers[i].y = forceInteraction[i].y;
 			}
 		}
 
@@ -465,6 +477,15 @@ int k=0;
 
 		activeDirector[i][0]=0.;
 		activeDirector[i][1]=0.;
+
+		velocity[i].x=0.;
+		velocity[i].y=0.;
+
+		total_force[i].x=0.;
+		total_force[i].y=0.;
+
+		forceInteraction[i].x=0.;
+		forceInteraction[i].y=0.;
 		}
 
 
@@ -475,9 +496,20 @@ int k=0;
 		
 		activeDirector[i][0]=activeDirector_noRattlers[i][0];
 		activeDirector[i][1]=activeDirector_noRattlers[i][1];
+
+		velocity[i].x=velocity_noRattlers[i].x ;
+		velocity[i].y=velocity_noRattlers[i].y ;
+
+		total_force[i].x=total_force_noRattlers[i].x;
+		total_force[i].y=total_force_noRattlers[i].y;
+
+		forceInteraction[i].x=forceInteraction_noRattlers[i].x;
+		forceInteraction[i].y=forceInteraction_noRattlers[i].y;
 		}
 
 	}
+
+setVerlet();
 }
 
 double calculate_deltaZ(){
