@@ -77,6 +77,7 @@ void remove_rattlers();
 void count_neighbors();
 double calculate_deltaZ();
 void write_config();
+void printGapDist(int i);
 
 
 #include "./initialize.h" //initializations such as reading Hyderabad configs, LAMMPS dump config and generating random packed configurations
@@ -579,4 +580,35 @@ fprintf(out,"\n");
 	fprintf(out,"%d %lf %lf\n",i,activeDirector[i][0],activeDirector[i][1]);
 	}
 fclose(out);
+}
+
+void printGapDist(int i){
+double r,dx,dy;
+int ti,tj;
+double d0;
+
+ti=position[i].t;
+
+	for (int j=1;j<=Nverl[i];j++){     
+	
+	tj=position[verl[i][j]].t;
+                        if      (ti+tj==2) d0=2.*rA;
+                        else if (ti+tj==3) d0=rA+rB;
+                        else if (ti+tj==4) d0=2.*rB;
+	dx=position[i].x-position[ verl[i][j] ].x;
+        dy=position[i].y-position[ verl[i][j] ].y;
+
+		if (dx>side/2) dx-=side;
+		if (dx<-side/2) dx+=side;
+		if (dy>side/2) dy-=side;
+		if (dy<-side/2) dy+=side;
+
+        r=(dx*dx+dy*dy);
+	r=sqrt(r);
+
+		if (i<verl[i][j]){
+		printf("%.16f\n",r-d0);
+		}
+	}
+
 }
