@@ -78,7 +78,10 @@ void count_neighbors();
 double calculate_deltaZ();
 void write_config();
 void printGapDist(int i);
-
+void printHessian();
+double doubleDerivPotDiag(double dx,double r,double d0);
+double doubleDerivPotNonDiag(double dx,double dy,double r,double d0);
+void dynamic_printHessian();
 
 #include "./initialize.h" //initializations such as reading Hyderabad configs, LAMMPS dump config and generating random packed configurations
 
@@ -610,5 +613,213 @@ ti=position[i].t;
 		printf("%.16f\n",r-d0);
 		}
 	}
+}
 
+
+void dynamic_printHessian(){
+double r,dx,dy;
+int ti,tj;
+double d0;
+int k;
+int l,m;
+double diagx,diagy,nonDiag;
+
+//initialize
+double* hessian;
+hessian = (double*)malloc((int)(2*nT*2*nT)*sizeof(double));
+	for (int i=0; i<(int)(2*nT*2*nT); i++){
+	hessian[i]=0.;
+	}
+
+	for (int i=1; i<=nT; i++){
+	ti=position[i].t;
+
+		for (int j=1;j<=Nverl[i];j++){     
+		k=verl[i][j];
+		tj=position[k].t;
+				if      (ti+tj==2) d0=2.*rA;
+				else if (ti+tj==3) d0=rA+rB;
+				else if (ti+tj==4) d0=2.*rB;
+		dx=position[i].x-position[k].x;
+		dy=position[i].y-position[k].y;
+
+			if (dx>side/2) dx-=side;
+			if (dx<-side/2) dx+=side;
+			if (dy>side/2) dy-=side;
+			if (dy<-side/2) dy+=side;
+
+		r=(dx*dx+dy*dy);
+		r=sqrt(r);
+
+			if (i<k){
+			l=(int)(2*(i-1));  //I am converting from particle index starting from 1 to starting from 0
+			m=(int)(2*(k-1));  //l,m indices identify the derivative of potential energy with xcoord of particles i,k. ycoord is l+1
+
+			//Diagonal 
+			diagx=doubleDerivPotDiag(dx,r,d0);
+			diagy=doubleDerivPotDiag(dy,r,d0);
+			//hessian[l][l] += diagx;
+			hessian[(int)(l*2*nT)+l] += diagx;
+			
+			//hessian[l+1][l+1] += diagy;
+			hessian[(int)((l+1)*2*nT)+l+1] += diagy;
+
+			//hessian[m][m] += diagx;
+			hessian[(int)(m*2*nT)+m] += diagx;
+			//hessian[m+1][m+1] += diagy;
+			hessian[(int)((m+1)*2*nT)+m+1] += diagy;
+
+			//Non-diagonal
+			//xixk,yiyk
+			//hessian[l][m] -= diagx;;
+			hessian[(int)(l*2*nT)+m] = -diagx;;
+			//hessian[m][l] -= diagx;;
+			hessian[(int)(m*2*nT)+l] = -diagx;;
+
+			//hessian[l+1][m+1] -= diagy;
+			hessian[(int)((l+1)*2*nT)+m+1] = -diagy;
+			//hessian[m+1][l+1] -= diagy;
+			hessian[(int)((m+1)*2*nT)+l+1] = -diagy;
+			
+			//xiyi,xkyk
+			nonDiag=doubleDerivPotNonDiag(dx,dy,r,d0);
+			//hessian[l][l+1] += nonDiag;
+			hessian[(int)(l*2*nT)+l+1] = nonDiag;
+			//hessian[l+1][l] += nonDiag;
+			hessian[(int)((l+1)*2*nT)+l] = nonDiag;
+
+			//hessian[m][m+1] += nonDiag;
+			hessian[(int)(m*2*nT)+m+1] = nonDiag;
+			//hessian[m+1][m] += nonDiag;
+			hessian[(int)((m+1)*2*nT)+m] = nonDiag;
+
+			//xiyk,yixk
+			//hessian[l][m+1] -= nonDiag;
+			hessian[(int)(l*2*nT)+m+1] = -nonDiag;
+			//hessian[m+1][l] -= nonDiag;
+			hessian[(int)((m+1)*2*nT)+l] = -nonDiag;
+
+			//hessian[l+1][m] -= nonDiag;
+			hessian[(int)((l+1)*2*nT)+m] = -nonDiag;
+			//hessian[m][l+1] -= nonDiag;
+			hessian[(int)(m*2*nT)+l+1] = -nonDiag;
+			}
+		}
+	}
+
+
+	for (int i=0; i<int(2*nT*2*nT); i++){
+		if (i%(int)(2*nT)==0 && i!=0) printf("\n");
+	printf("%lf ",hessian[i]);
+	}
+
+free(hessian);
+}
+
+void printHessian(){
+double r,dx,dy;
+int ti,tj;
+double d0;
+int k;
+int l,m;
+double diagx,diagy,nonDiag;
+
+//initialize
+int si=(int)(2*nT+1);
+double hessian[si][si];
+
+	for (int i=1; i<=(int)(2*nT); i++){
+		for (k=1; k<=(int)(2*nT); k++){
+		hessian[i][k]=0.;
+		}
+	}
+
+	for (int i=1; i<=nT; i++){
+	ti=position[i].t;
+
+		for (int j=1;j<=Nverl[i];j++){     
+		k=verl[i][j];
+		tj=position[k].t;
+				if      (ti+tj==2) d0=2.*rA;
+				else if (ti+tj==3) d0=rA+rB;
+				else if (ti+tj==4) d0=2.*rB;
+		dx=position[i].x-position[k].x;
+		dy=position[i].y-position[k].y;
+
+			if (dx>side/2) dx-=side;
+			if (dx<-side/2) dx+=side;
+			if (dy>side/2) dy-=side;
+			if (dy<-side/2) dy+=side;
+
+		r=(dx*dx+dy*dy);
+		r=sqrt(r);
+
+			if (i<k){	 //For every contact between particles
+			l=(int)(2*i-1);  //I am converting from particle index starting from 1 to starting from 0
+			m=(int)(2*k-1);  //l,m indices identify the derivative of potential energy with xcoord of particles i,k. ycoord is l+1
+
+			//Diagonal 
+			diagx=doubleDerivPotDiag(dx,r,d0);
+			diagy=doubleDerivPotDiag(dy,r,d0);
+			hessian[l][l] += diagx;
+			
+			hessian[l+1][l+1] += diagy;
+
+			hessian[m][m] += diagx;
+			hessian[m+1][m+1] += diagy;
+
+			//Non-diagonal
+			//xixk,yiyk
+			hessian[l][m] = -diagx;;
+			hessian[m][l] = -diagx;;
+
+			hessian[l+1][m+1] = -diagy;
+			hessian[m+1][l+1] = -diagy;
+			
+			//xiyi,xkyk
+			nonDiag=doubleDerivPotNonDiag(dx,dy,r,d0);
+			hessian[l][l+1] = nonDiag;
+			hessian[l+1][l] = nonDiag;
+
+			hessian[m][m+1] = nonDiag;
+			hessian[m+1][m] = nonDiag;
+
+			//xiyk,yixk
+			hessian[l][m+1] = -nonDiag;
+			hessian[m+1][l] = -nonDiag;
+
+			hessian[l+1][m] = -nonDiag;
+			hessian[m][l+1] = -nonDiag;
+			}
+
+		}
+	}
+
+
+	for (int i=1; i<=int(2*nT); i++){
+	for (int k=1; k<=int(2*nT); k++){
+	printf("%lf ",hessian[i][k]);
+	}
+	printf("\n");
+	}
+
+}
+
+double doubleDerivPotDiag(double dx,double r,double d0){
+double dderiv=0.0;
+
+dderiv += dx*dx/pow(r*d0,2);
+dderiv += dx*dx*(1.0-r/d0)/(pow(r,3)*d0);
+dderiv += -(1.0-r/d0)/(r*d0);
+
+return dderiv;
+}
+
+double doubleDerivPotNonDiag(double dx,double dy,double r,double d0){
+double dderiv=0.0;
+
+dderiv += dx*dy/(pow(r*d0,2));
+dderiv += dx*dy*(1.0-r/d0)/(pow(r,3)*d0);
+
+return dderiv;
 }
