@@ -580,7 +580,7 @@ fprintf(out,"%d %.16f\n",nT,side);
 fprintf(out,"\n");
 
 	for (int i=1;i<=nT;i++){
-	fprintf(out,"%d %lf %lf\n",i,activeDirector[i][0],activeDirector[i][1]);
+	fprintf(out,"%d %.16f %.16f\n",i,activeDirector[i][0],activeDirector[i][1]);
 	}
 fclose(out);
 }
@@ -672,37 +672,37 @@ hessian = (double*)malloc((int)(2*nT*2*nT)*sizeof(double));
 			//Non-diagonal
 			//xixk,yiyk
 			//hessian[l][m] -= diagx;;
-			hessian[(int)(l*2*nT)+m] = -diagx;;
+			hessian[(int)(l*2*nT)+m] += -diagx;;
 			//hessian[m][l] -= diagx;;
-			hessian[(int)(m*2*nT)+l] = -diagx;;
+			hessian[(int)(m*2*nT)+l] += -diagx;;
 
 			//hessian[l+1][m+1] -= diagy;
-			hessian[(int)((l+1)*2*nT)+m+1] = -diagy;
+			hessian[(int)((l+1)*2*nT)+m+1] += -diagy;
 			//hessian[m+1][l+1] -= diagy;
-			hessian[(int)((m+1)*2*nT)+l+1] = -diagy;
+			hessian[(int)((m+1)*2*nT)+l+1] += -diagy;
 			
 			//xiyi,xkyk
 			nonDiag=doubleDerivPotNonDiag(dx,dy,r,d0);
 			//hessian[l][l+1] += nonDiag;
-			hessian[(int)(l*2*nT)+l+1] = nonDiag;
+			hessian[(int)(l*2*nT)+l+1] += nonDiag;
 			//hessian[l+1][l] += nonDiag;
-			hessian[(int)((l+1)*2*nT)+l] = nonDiag;
+			hessian[(int)((l+1)*2*nT)+l] += nonDiag;
 
 			//hessian[m][m+1] += nonDiag;
-			hessian[(int)(m*2*nT)+m+1] = nonDiag;
+			hessian[(int)(m*2*nT)+m+1] += nonDiag;
 			//hessian[m+1][m] += nonDiag;
-			hessian[(int)((m+1)*2*nT)+m] = nonDiag;
+			hessian[(int)((m+1)*2*nT)+m] += nonDiag;
 
 			//xiyk,yixk
 			//hessian[l][m+1] -= nonDiag;
-			hessian[(int)(l*2*nT)+m+1] = -nonDiag;
+			hessian[(int)(l*2*nT)+m+1] += -nonDiag;
 			//hessian[m+1][l] -= nonDiag;
-			hessian[(int)((m+1)*2*nT)+l] = -nonDiag;
+			hessian[(int)((m+1)*2*nT)+l] += -nonDiag;
 
 			//hessian[l+1][m] -= nonDiag;
-			hessian[(int)((l+1)*2*nT)+m] = -nonDiag;
+			hessian[(int)((l+1)*2*nT)+m] += -nonDiag;
 			//hessian[m][l+1] -= nonDiag;
-			hessian[(int)(m*2*nT)+l+1] = -nonDiag;
+			hessian[(int)(m*2*nT)+l+1] += -nonDiag;
 			}
 		}
 	}
@@ -710,7 +710,7 @@ hessian = (double*)malloc((int)(2*nT*2*nT)*sizeof(double));
 
 	for (int i=0; i<int(2*nT*2*nT); i++){
 		if (i%(int)(2*nT)==0 && i!=0) printf("\n");
-	printf("%lf ",hessian[i]);
+	printf("%.16f ",hessian[i]);
 	}
 
 free(hessian);
@@ -746,10 +746,10 @@ double hessian[si][si];
 		dx=position[i].x-position[k].x;
 		dy=position[i].y-position[k].y;
 
-			if (dx>side/2) dx-=side;
-			if (dx<-side/2) dx+=side;
-			if (dy>side/2) dy-=side;
-			if (dy<-side/2) dy+=side;
+			if (dx>side/2.) dx-=side;
+			if (dx<-side/2.) dx+=side;
+			if (dy>side/2.) dy-=side;
+			if (dy<-side/2.) dy+=side;
 
 		r=(dx*dx+dy*dy);
 		r=sqrt(r);
@@ -770,26 +770,26 @@ double hessian[si][si];
 
 			//Non-diagonal
 			//xixk,yiyk
-			hessian[l][m] = -diagx;;
-			hessian[m][l] = -diagx;;
+			hessian[l][m] += -diagx;;
+			hessian[m][l] += -diagx;;
 
-			hessian[l+1][m+1] = -diagy;
-			hessian[m+1][l+1] = -diagy;
+			hessian[l+1][m+1] += -diagy;
+			hessian[m+1][l+1] += -diagy;
 			
 			//xiyi,xkyk
 			nonDiag=doubleDerivPotNonDiag(dx,dy,r,d0);
-			hessian[l][l+1] = nonDiag;
-			hessian[l+1][l] = nonDiag;
+			hessian[l][l+1] += nonDiag;
+			hessian[l+1][l] += nonDiag;
 
-			hessian[m][m+1] = nonDiag;
-			hessian[m+1][m] = nonDiag;
+			hessian[m][m+1] += nonDiag;
+			hessian[m+1][m] += nonDiag;
 
 			//xiyk,yixk
-			hessian[l][m+1] = -nonDiag;
-			hessian[m+1][l] = -nonDiag;
+			hessian[l][m+1] += -nonDiag;
+			hessian[m+1][l] += -nonDiag;
 
-			hessian[l+1][m] = -nonDiag;
-			hessian[m][l+1] = -nonDiag;
+			hessian[l+1][m] += -nonDiag;
+			hessian[m][l+1] += -nonDiag;
 			}
 
 		}
@@ -798,7 +798,7 @@ double hessian[si][si];
 
 	for (int i=1; i<=int(2*nT); i++){
 	for (int k=1; k<=int(2*nT); k++){
-	printf("%lf ",hessian[i][k]);
+	printf("%.16f ",hessian[i][k]);
 	}
 	printf("\n");
 	}
