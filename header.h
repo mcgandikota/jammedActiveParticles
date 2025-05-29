@@ -20,8 +20,8 @@ int nT;
 double side;
 double side_r;      //inverse of side
 double m=1;
-double damp=0.01;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.2;					   //deltaT=0.2 works good for MD
+double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
+double deltaT=0.002;					   //deltaT=0.2 works good for MD
 double totF_cutoff=1e-11;
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
@@ -40,6 +40,7 @@ double ke;
 double ke_COM;                      
 double pe;
 double pe_Eff;
+double fxCOM,fyCOM;
 double Vx[20000];    // Positions of monomers in past
 double Vy[20000];    // Positions of monomers in past
 int Nverl[20000];    // The number of monomers in neighborhood of i^th monomer
@@ -244,14 +245,54 @@ total_force[i].x=forceInteraction[i].x+activeSpeed*activeDirector[i][0];
 total_force[i].y=forceInteraction[i].y+activeSpeed*activeDirector[i][1];
 }
 
+/*
 void averageTotalForce(){
 totF=0.;
-double f;
+double act_forcex=0.,act_forcey=0.;
+
         for (int i=1;i<=nT;i++){
-	f=total_force[i].x*total_force[i].x+total_force[i].y*total_force[i].y;
+	act_forcex += activeSpeed*activeDirector[i][0];
+	act_forcey += activeSpeed*activeDirector[i][1];
+	}
+
+double f;
+double fx,fy;
+        for (int i=1;i<=nT;i++){
+	fx=total_force[i].x-act_forcex;
+	fy=total_force[i].y-act_forcey;
+	//f=total_force[i].x*total_force[i].x+total_force[i].y*total_force[i].y;
+	f=fx*fx+fy*fy;
 	f=sqrt(f);
 	totF += f;
 	}
+totF /= nT;
+}
+*/
+
+void averageTotalForce(){
+
+double f;
+fxCOM=0.;fyCOM=0.;
+
+        for (int i=1;i<=nT;i++){
+	fxCOM+=total_force[i].x;
+	fyCOM+=total_force[i].y;
+	}
+
+fxCOM /= nT;
+fyCOM /= nT;
+
+double fx,fy;
+totF=0.;
+
+        for (int i=1;i<=nT;i++){
+	fx=total_force[i].x-fxCOM;
+	fy=total_force[i].y-fyCOM;
+	f=fx*fx+fy*fy;
+	f=sqrt(f);
+	totF += f;
+	}
+
 totF /= nT;
 }
 
@@ -279,9 +320,14 @@ ke_COM/=(2.*nT);
 
 int ti,tj;
 double d0,ks=1.0;
+double sum_act_vec=0.;
+pe_Eff=0.;
+
         for (int i=1;i<=nT;i++){
+	//pe_Eff += fxCOM*position[i].x;
+	//pe_Eff += fyCOM*position[i].y;
 	ti=position[i].t;
-	pe_Eff -= activeDirector[i][0]*position[i].x+activeDirector[i][1]*position[i].y;
+	sum_act_vec += activeDirector[i][0]*position[i].x+activeDirector[i][1]*position[i].y;
 	//Use PBC position or unwrapped position? 
 
 		for (int j=i+1;j<=nT;j++){
@@ -293,8 +339,8 @@ double d0,ks=1.0;
 		dy=position[i].y-position[j].y;
 
 		//PBC
-		//dx -= side*nearbyint(dx*side_r);
-		//dy -= side*nearbyint(dy*side_r);
+		//dx -= side*round(dx*side_r);
+		//dy -= side*round(dy*side_r);
 			if (dx>side/2) dx-=side;
 		        if (dx<-side/2) dx+=side;
 			if (dy>side/2) dy-=side;
@@ -302,17 +348,22 @@ double d0,ks=1.0;
 
 
 		r=(dx*dx+dy*dy);
+		r=sqrt(r);
 			if (r<d0){
 			//pe += (r-d0)*(r-d0);                           
 			pe += (1.-r/d0)*(1.-r/d0);                           
 			}
 		}
 	}
+
 pe *= 0.5*ks;
-pe_Eff *= activeSpeed;
+//pe_Eff *= nT;
+pe_Eff +=  -activeSpeed*sum_act_vec;
+//pe_Eff += -totF*sum_act_vec;
+//pe/=(2*nT);   //why is there a two here? you already multiplied by 0.5 above and there is no overcounting in i,j for loop above
 pe_Eff += pe;
-pe_Eff /=(2*nT);
-pe/=(2*nT);
+pe_Eff /=nT;
+pe /=nT;
 }
 
 void print(int k){
@@ -421,8 +472,8 @@ int ti,tj,n;
                 dx=fabs(position[i].x-position[j].x);
                 dy=fabs(position[i].y-position[j].y);
 
-                if (dx>side/2.) dx -= side;
-                if (dy>side/2.) dy -= side;
+		if (dx>side/2) dx-=side;
+		if (dy>side/2) dy-=side;
                 separation = dx*dx + dy*dy;
                 separation = sqrt(separation);
     
@@ -539,8 +590,8 @@ double dx,dy,d0,separation;
 			dx=fabs(position[i].x-position[verl[i][j]].x);
 			dy=fabs(position[i].y-position[verl[i][j]].y);
 
-			if (dx>side/2.) dx -= side;
-			if (dy>side/2.) dy -= side;
+			if (dx>side/2) dx-=side;
+			if (dy>side/2) dy-=side;
 			separation = dx*dx + dy*dy;
 			separation = sqrt(separation);
 		
@@ -601,10 +652,10 @@ ti=position[i].t;
 	dx=position[i].x-position[ verl[i][j] ].x;
         dy=position[i].y-position[ verl[i][j] ].y;
 
-		if (dx>side/2) dx-=side;
-		if (dx<-side/2) dx+=side;
-		if (dy>side/2) dy-=side;
-		if (dy<-side/2) dy+=side;
+		if (dx>side/2.) dx-=side;
+		if (dx<-side/2.) dx+=side;
+		if (dy>side/2.) dy-=side;
+		if (dy<-side/2.) dy+=side;
 
         r=(dx*dx+dy*dy);
 	r=sqrt(r);
@@ -651,7 +702,7 @@ hessian = (double*)malloc((int)(2*nT*2*nT)*sizeof(double));
 		r=(dx*dx+dy*dy);
 		r=sqrt(r);
 
-			if (i<k){
+			if (r<d0 && i<k){
 			l=(int)(2*(i-1));  //I am converting from particle index starting from 1 to starting from 0
 			m=(int)(2*(k-1));  //l,m indices identify the derivative of potential energy with xcoord of particles i,k. ycoord is l+1
 
@@ -710,7 +761,9 @@ hessian = (double*)malloc((int)(2*nT*2*nT)*sizeof(double));
 
 	for (int i=0; i<int(2*nT*2*nT); i++){
 		if (i%(int)(2*nT)==0 && i!=0) printf("\n");
-	printf("%.16f ",hessian[i]);
+		if (hessian[i]==0.0) printf("%.2f ",hessian[i]);
+		else printf("%.16f ",hessian[i]);
+
 	}
 
 free(hessian);
@@ -746,15 +799,15 @@ double hessian[si][si];
 		dx=position[i].x-position[k].x;
 		dy=position[i].y-position[k].y;
 
-			if (dx>side/2.) dx-=side;
-			if (dx<-side/2.) dx+=side;
-			if (dy>side/2.) dy-=side;
-			if (dy<-side/2.) dy+=side;
+			if (dx>side/2) dx-=side;
+			if (dx<-side/2) dx+=side;
+			if (dy>side/2) dy-=side;
+			if (dy<-side/2) dy+=side;
 
 		r=(dx*dx+dy*dy);
 		r=sqrt(r);
 
-			if (i<k){	 //For every contact between particles
+			if (r<d0 && i<k){	 //For every contact between particles
 			l=(int)(2*i-1);  //I am converting from particle index starting from 1 to starting from 0
 			m=(int)(2*k-1);  //l,m indices identify the derivative of potential energy with xcoord of particles i,k. ycoord is l+1
 
