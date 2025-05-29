@@ -21,7 +21,7 @@ double side;
 double side_r;      //inverse of side
 double m=1;
 double damp=0.1;					           //Is this too much damping for inertial FIRE to work efficiently?
-double deltaT=0.002;					   //deltaT=0.2 works good for MD
+double deltaT=0.2;					   //deltaT=0.2 works good for MD
 double totF_cutoff=1e-11;
 double Gamma=exp(-damp*deltaT/m);
 double c1=m/damp*(1-Gamma);
